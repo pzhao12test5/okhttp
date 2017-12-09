@@ -224,15 +224,17 @@ public final class CacheInterceptor implements Interceptor {
       if ("Warning".equalsIgnoreCase(fieldName) && value.startsWith("1")) {
         continue; // Drop 100-level freshness warnings.
       }
-      if (isContentSpecificHeader(fieldName) || !isEndToEnd(fieldName)
-              || networkHeaders.get(fieldName) == null) {
+      if (!isEndToEnd(fieldName) || networkHeaders.get(fieldName) == null) {
         Internal.instance.addLenient(result, fieldName, value);
       }
     }
 
     for (int i = 0, size = networkHeaders.size(); i < size; i++) {
       String fieldName = networkHeaders.name(i);
-      if (!isContentSpecificHeader(fieldName) && isEndToEnd(fieldName)) {
+      if ("Content-Length".equalsIgnoreCase(fieldName)) {
+        continue; // Ignore content-length headers of validating responses.
+      }
+      if (isEndToEnd(fieldName)) {
         Internal.instance.addLenient(result, fieldName, networkHeaders.value(i));
       }
     }
@@ -253,15 +255,5 @@ public final class CacheInterceptor implements Interceptor {
         && !"Trailers".equalsIgnoreCase(fieldName)
         && !"Transfer-Encoding".equalsIgnoreCase(fieldName)
         && !"Upgrade".equalsIgnoreCase(fieldName);
-  }
-
-  /**
-   * Returns true if {@code fieldName} is content specific and therefore should always be used
-   * from cached headers.
-   */
-  static boolean isContentSpecificHeader(String fieldName) {
-    return "Content-Length".equalsIgnoreCase(fieldName)
-        || "Content-Encoding".equalsIgnoreCase(fieldName)
-        || "Content-Type".equalsIgnoreCase(fieldName);
   }
 }
